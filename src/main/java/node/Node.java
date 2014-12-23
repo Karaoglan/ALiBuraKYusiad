@@ -5,9 +5,10 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +19,7 @@ import org.apache.commons.logging.LogFactory;
 import util.Config;
 import cli.Command;
 import cli.Shell;
+import exceptions.ConnectionRollbackedException;
 
 public class Node implements INodeCli, Runnable {
 
@@ -29,9 +31,9 @@ public class Node implements INodeCli, Runnable {
 	private int tcpPort;
 	private String host;
 	private Timer timer;
-	private IsAliveSender isAliveSender ;
-	public static Map<Integer,String> nodes=Collections.synchronizedMap(new HashMap<Integer,String>());
-	public static Map<Integer,String> nodeStatus=Collections.synchronizedMap(new HashMap<Integer,String>());
+	private IsAliveSender isAliveSender =null;
+	// first index real ressource value second uncommited 
+	public static List<String> nodeResource =Collections.synchronizedList(new ArrayList<String>(2));
 	public static final Log logger =LogFactory.getLog(Node.class);
 	private final  ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -45,6 +47,7 @@ public class Node implements INodeCli, Runnable {
 	 *            the input stream to read user input from
 	 * @param userResponseStream
 	 *            the output stream to write the console output to
+	 * @throws ConnectionRollbackedException 
 	 */
 	public Node(String componentName, Config config,
 			InputStream userRequestStream, PrintStream userResponseStream) {
@@ -52,6 +55,7 @@ public class Node implements INodeCli, Runnable {
 		this.config = config;
 		this.tcpPort=config.getInt("tcp.port");
 		this.host=config.getString("controller.host");
+		nodeResource.add("0");
 
 		try {
 			this.server=new ServerSocket (tcpPort);
@@ -65,15 +69,21 @@ public class Node implements INodeCli, Runnable {
 		 * Next, register all commands the Shell should support. In this example
 		 * this class implements all desired commands.
 		 */
-		
+		shell=new Shell(componentName,userRequestStream,userResponseStream);
+		shell.register(this);
 		timer=new Timer();
 		int nodeAlive=config.getInt("node.alive");
 		String operator=config.getString("node.operators");
-		isAliveSender=new IsAliveSender(config.getInt("controller.udp.port"),tcpPort,host,operator);
-		logger.info("DatagrammPackets will be send in every "+nodeAlive +" ms");
+		try {
+			isAliveSender=new IsAliveSender(config.getInt("controller.udp.port"),tcpPort,host,operator);
+		} catch (ConnectionRollbackedException e) {
+			logger.info("Connection rollbacked..Please increase the resources");
+			return;
+		}
+
 		timer.scheduleAtFixedRate(isAliveSender, 0,nodeAlive);
-		shell=new Shell(componentName,userRequestStream,userResponseStream);
-		shell.register(this);
+		logger.info("DatagrammPackets will be send in every "+nodeAlive +" ms");
+
 
 	}
 
@@ -103,7 +113,9 @@ public class Node implements INodeCli, Runnable {
 		logger.info("exit called");
 		executorService.shutdownNow();
 		this.timer.cancel();
-		this.isAliveSender.exit();
+		if(this.isAliveSender!=null){
+			this.isAliveSender.exit();
+		}
 		try {
 			this.server.close();
 		} catch (IOException e) {
@@ -125,10 +137,11 @@ public class Node implements INodeCli, Runnable {
 	// --- Commands needed for Lab 2. Please note that you do not have to
 	// implement them for the first submission. ---
 
+	@Command
 	@Override
 	public String resources() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		System.out.println(Arrays.toString(nodeResource.toArray()));
+		return nodeResource.get(0);
 	}
 
 

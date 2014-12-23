@@ -62,8 +62,6 @@ public class CloudController implements ICloudControllerCli, Runnable {
 			this.alive=new IsAliveListener(config.getInt("udp.port"));
 			//executorService.execute(alive);
 			alive.start();
-			logger.info("Server mit tcp port "+config.getInt("tcp.port")+" erstellt");
-			
 		} catch (IOException e) {
 			logger.error("Server IO failure during create Server Socket !",e);
 		}
@@ -85,7 +83,7 @@ public class CloudController implements ICloudControllerCli, Runnable {
 	public void run() {
 		executorService.execute(shell);
 		System.out.println(componentName
-				+ " up and waiting for commands!");
+				+ " is up and waiting for commands!");
 
 		while (!server.isClosed()){
 			try {

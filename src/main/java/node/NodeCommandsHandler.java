@@ -29,6 +29,7 @@ public class NodeCommandsHandler implements Runnable {
 	private Shell shell;
 	private Config config;
 	private String componentName;
+
 	public static final Log logger =LogFactory.getLog(NodeCommandsHandler.class);
 
 	public NodeCommandsHandler(Socket client,Config config,String componentName) {
@@ -89,6 +90,30 @@ public class NodeCommandsHandler implements Runnable {
 			logger.error("Log File cant not be created");
 		}
 		return erg.toString().trim();
+	}
+	
+	@Command
+	public String share(int res){
+		int rmin=config.getInt("node.rmin");
+		Node.nodeResource.add(1,res+"");
+		if(res>=rmin){
+			return "!ok";
+		}
+
+		return "!nok";
+	}
+
+	@Command
+	public void commit(){
+		Node.nodeResource.remove(0);
+	}
+
+	@Command
+	public void rollback(){
+		if(Node.nodeResource.size()>1){
+			Node.nodeResource.remove(1);
+		}
+
 	}
 	public synchronized void setLogFile(String erg) throws IOException{
 		Date date = new Date() ;

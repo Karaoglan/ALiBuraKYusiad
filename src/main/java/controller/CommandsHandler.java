@@ -9,11 +9,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import util.Config;
+import admin.INotificationCallback;
 import cli.Command;
 import cli.Shell;
 
@@ -175,6 +177,7 @@ public class CommandsHandler implements Runnable {
 		int numberOfRequest=0;
 		//check if term have available operations
 		List<String> list=Arrays.asList(term.split(" "));
+		
 		for(int i = 1 ; i<list.size();i=i+2){
 			numberOfRequest++;
 			if(!list().contains(list.get(i))){
@@ -195,11 +198,15 @@ public class CommandsHandler implements Runnable {
 		while(it.hasNext()){
 			if(checkTerm){
 				operator =it.next();
+				Long lastValue=CloudController.statistic.get(operator.charAt(0));
+				CloudController.statistic.put(operator.charAt(0), lastValue+1);
 				String digit=it.next(); 
 				toCompute=ergebnis+" "+operator+" "+digit;
 			}else{
 				String digit=it.next(); 
 				operator =it.next();
+				Long lastValue=CloudController.statistic.get(operator.charAt(0));
+				CloudController.statistic.put(operator.charAt(0), lastValue+1);
 				String digit2=it.next();
 				toCompute=digit+" "+operator+" "+digit2;
 				checkTerm=true;
@@ -228,6 +235,18 @@ public class CommandsHandler implements Runnable {
 				Long currentCredits =CloudController.userCredits.get(loggedInUser);
 				logger.info("Subtracting 50 credits from " +loggedInUser);
 				CloudController.userCredits.put(loggedInUser,currentCredits-50);
+				//subscribe
+				synchronized(CloudController.subscription){
+					for(INotificationCallback cl :CloudController.subscription.keySet()){
+						for(Entry<String,Integer> map :CloudController.subscription.get(cl).entrySet()){
+							String username=map.getKey();
+							Integer credits=map.getValue();
+							if(username.equals(loggedInUser) && CloudController.userCredits.get(username)<credits){
+								cl.notify(username, credits);
+							}
+						}
+					}
+				}
 				setUsage(port, erg.length()*50);
 				//close socket 
 				Nodereader.close();

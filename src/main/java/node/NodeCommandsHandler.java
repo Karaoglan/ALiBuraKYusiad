@@ -2,18 +2,28 @@ package node;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+
+import model.ComputationRequestInfo;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,6 +46,7 @@ public class NodeCommandsHandler implements Runnable {
 		this.config=config;
 		this.client=client;
 		this.componentName=componentName;
+		
 		try {
 			this.writer=new PrintWriter(client.getOutputStream(),true);
 			this.reader=new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -91,7 +102,7 @@ public class NodeCommandsHandler implements Runnable {
 		}
 		return erg.toString().trim();
 	}
-	
+
 	@Command
 	public String share(int res){
 		int rmin=config.getInt("node.rmin");
@@ -124,13 +135,65 @@ public class NodeCommandsHandler implements Runnable {
 		out.close();
 
 	}
+
+	@Command
+	public List<ComputationRequestInfo> getLogs(){
+		logger.info("getLogs method");
+		List<ComputationRequestInfo> logList=new ArrayList<ComputationRequestInfo>();
+		String directory=config.getString("log.dir");
+		File folder = new File(directory);
+		File[] listOfFiles = folder.listFiles();
+
+		for (File file : listOfFiles) {
+			if (file.isFile()) {
+				String fileName=file.getName();
+				Date date=null;
+				try {
+					date=formatter.get().parse(fileName.substring(0, fileName.indexOf("_node")));
+				} catch (ParseException e) {
+					logger.error("Timestamp parse failure");
+				}
+				String node=componentName;
+				FileInputStream fstream=null;
+				try {
+					fstream=new FileInputStream(directory+"/"+fileName);
+					ObjectInputStream ois=new ObjectInputStream(fstream);
+
+					while(true){  
+						try{  
+							//control
+							String line=ois.readLine();
+							String term=line.substring(0,line.indexOf("="));
+							String erg=line.substring(term.length()+1);
+							
+							ComputationRequestInfo request=new ComputationRequestInfo(date, term, erg, node);
+							logList.add(request);
+
+							
+						} catch (EOFException e){
+							logger.info("end of line");
+						}  
+					}
+				} catch (FileNotFoundException e) {
+					logger.error("File not found..");
+				} catch (IOException e) {
+					logger.error("Can not read the log file");
+				}
+
+
+
+			}
+		}
+
+		return logList;
+	}
 	private static final ThreadLocal<SimpleDateFormat> formatter = new ThreadLocal<SimpleDateFormat>(){
-        @Override
-        protected SimpleDateFormat initialValue()
-        {
-            return new SimpleDateFormat("yyyyMMdd_HHmmss.SSS");
-        }
-    };
+		@Override
+		protected SimpleDateFormat initialValue()
+		{
+			return new SimpleDateFormat("yyyyMMdd_HHmmss.SSS");
+		}
+	};
 	public void exit(){
 		try {
 			this.client.close();

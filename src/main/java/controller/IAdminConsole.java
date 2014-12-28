@@ -67,26 +67,5 @@ public interface IAdminConsole extends Remote {
 	 */
 	LinkedHashMap<Character, Long> statistics() throws RemoteException;
 
-	/**
-	 * Returns the public key used by the cloud controller for encrypted
-	 * connections.
-	 *
-	 * @return the public key
-	 * @throws RemoteException
-	 *             if a remote error occurs
-	 */
-	Key getControllerPublicKey() throws RemoteException;
-
-	/**
-	 * Sets or replaces the public key ({@code &lt;username&gt;.pub.pem}) of the
-	 * given user.
-	 *
-	 * @param username
-	 *            the name of the user
-	 * @param key
-	 *            the content of the public key file
-	 * @throws RemoteException
-	 *             if a remote error occurs
-	 */
-	void setUserPublicKey(String username, byte[] key) throws RemoteException;
+	void closeAdmin(INotificationCallback cl) throws RemoteException;
 }

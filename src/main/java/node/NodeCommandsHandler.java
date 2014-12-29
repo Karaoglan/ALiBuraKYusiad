@@ -40,6 +40,7 @@ public class NodeCommandsHandler implements Runnable {
 	private Config config;
 	private String componentName;
 
+
 	public static final Log logger =LogFactory.getLog(NodeCommandsHandler.class);
 
 	public NodeCommandsHandler(Socket client,Config config,String componentName) {
@@ -198,7 +199,6 @@ public class NodeCommandsHandler implements Runnable {
 		try {
 			this.client.close();
 			this.reader.close();
-			this.writer.close();
 		} catch (IOException e) {
 			logger.info("Socket can not be closed ! Socket is already closed or null!");
 		}

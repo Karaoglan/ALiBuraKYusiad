@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.rmi.AccessException;
+import java.rmi.NoSuchObjectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -148,10 +149,14 @@ public class AdminConsole extends UnicastRemoteObject implements IAdminConsole, 
 		} catch (RemoteException e) {
 			logger.error("Can not be closed..");
 		}
+		try {
+			UnicastRemoteObject.unexportObject(this,true);
+		} catch (NoSuchObjectException e1) {
+			logger.error("NoSuchObject");
+		}
 		this.executorService.shutdownNow();
 		try {
 			this.userRequestStream.close();
-			this.userResponseStream.close();
 		} catch (IOException e) {
 
 		}

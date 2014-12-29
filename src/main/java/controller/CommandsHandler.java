@@ -165,7 +165,7 @@ public class CommandsHandler implements Runnable {
 		if(firstPlusOcc!=lastPlusOcc){
 			operators=operators.substring(0,lastPlusOcc)+operators.substring(lastPlusOcc+1);
 		}
-		return operators;
+		return operators.length()>0?operators:"No available operators";
 	}
 
 
@@ -177,7 +177,7 @@ public class CommandsHandler implements Runnable {
 		int numberOfRequest=0;
 		//check if term have available operations
 		List<String> list=Arrays.asList(term.split(" "));
-		
+
 		for(int i = 1 ; i<list.size();i=i+2){
 			numberOfRequest++;
 			if(!list().contains(list.get(i))){
@@ -251,7 +251,7 @@ public class CommandsHandler implements Runnable {
 				//close socket 
 				Nodereader.close();
 				Nodewriter.close();
-				Nodereader.close();
+				Nodeclient.close();
 
 			}
 

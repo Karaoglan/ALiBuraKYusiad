@@ -64,7 +64,12 @@ public class IsAliveListener extends Thread {
 					logger.error("I/O failure...!",e);
 				}
 
-			}else{
+			}else if (receivedString.length()==0){
+				close();
+				
+			}
+			
+			else{
 				String[] splitStr = receivedString.split(" ");
 				int port=Integer.parseInt(splitStr[1]);
 				InetAddress adr=packet.getAddress();

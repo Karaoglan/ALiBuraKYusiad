@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -74,10 +75,10 @@ public class Client implements IClientCli, Runnable {
 
 	@Override
 	public void run() {
-			executor.execute(shell);
-			System.out.println(componentName
-					+ " up and waiting for commands!");
-			
+		executor.execute(shell);
+		System.out.println(componentName
+				+ " up and waiting for commands!");
+
 	}
 
 
@@ -181,10 +182,14 @@ public class Client implements IClientCli, Runnable {
 	 *            the first argument is the name of the {@link Client} component
 	 */
 	public static void main(String[] args) {
-		Client client = new Client(args[0], new Config("client"), System.in,
-				System.out);
+		try{
+			Client	client = new Client(args[0], new Config("client"), System.in,
+					System.out);
+			client.run();
+		}catch(RejectedExecutionException ex){
+			return;
+		}
 
-		client.run();
 	}
 
 	// --- Commands needed for Lab 2. Please note that you do not have to

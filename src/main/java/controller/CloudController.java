@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -177,10 +178,11 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 	public String exit() throws IOException {
 		logger.info("exit called");
 		executorService.shutdown();
-
+		alive.stop();
 		alive.close();
 		userRequestStream.close();
 		server.close();
+		UnicastRemoteObject.unexportObject(this,true);
 		return "Server isnt going to accept any new Connection! Good Bye..!";
 
 
@@ -269,7 +271,7 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 						System.out.println("burda");
 						//oos.writeUTF("!getLogs");
 						//oos.writeObject("!getLogs");
-						oos.writeObject("!getLogs".getBytes());
+						oos.writeObject("!getLogs");
 						oos.flush();
 						oos.close();
 

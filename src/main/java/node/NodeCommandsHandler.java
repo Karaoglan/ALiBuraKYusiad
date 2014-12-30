@@ -2,14 +2,12 @@ package node;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.EOFException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -47,7 +45,7 @@ public class NodeCommandsHandler implements Runnable {
 		this.config=config;
 		this.client=client;
 		this.componentName=componentName;
-		
+
 		try {
 			this.writer=new PrintWriter(client.getOutputStream(),true);
 			this.reader=new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -68,11 +66,16 @@ public class NodeCommandsHandler implements Runnable {
 		try {
 			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=reader.readLine())!=null){
 				try {
-					writer.println(shell.invoke(command));
+					if(command.equals("!getLogs")){
+						ObjectOutputStream oos=new ObjectOutputStream(client.getOutputStream());
+						oos.flush();
+						List<ComputationRequestInfo> list=(List<ComputationRequestInfo>) shell.invoke(command);
+						oos.writeObject(list);
+						oos.close();
+					}else writer.println(shell.invoke(command));
 				}
 				catch (Throwable e) {
 					exit();
-
 				}
 			}	
 		} catch (IOException e) {
@@ -129,7 +132,7 @@ public class NodeCommandsHandler implements Runnable {
 	}
 	public synchronized void setLogFile(String erg) throws IOException{
 		Date date = new Date() ;
-		SimpleDateFormat dateFormat = formatter.get() ;
+		SimpleDateFormat dateFormat = formatter.get();
 		File file = new File(dateFormat.format(date)+"_"+componentName + ".log") ;
 		BufferedWriter out = new BufferedWriter(new FileWriter(config.getString("log.dir")+"/"+file));
 		out.write(erg);
@@ -154,38 +157,24 @@ public class NodeCommandsHandler implements Runnable {
 				} catch (ParseException e) {
 					logger.error("Timestamp parse failure");
 				}
-				String node=componentName;
-				FileInputStream fstream=null;
 				try {
-					fstream=new FileInputStream(directory+"/"+fileName);
-					ObjectInputStream ois=new ObjectInputStream(fstream);
+					FileReader reader=new FileReader(file);
+					BufferedReader fileReader=new BufferedReader(reader);
+					String line="";
+					while((line=fileReader.readLine())!=null){
+						String term=line.substring(0,line.indexOf("=")).trim();
+						String erg=line.substring(term.length()+2).trim();
 
-					while(true){  
-						try{  
-							//control
-							String line=ois.readLine();
-							String term=line.substring(0,line.indexOf("="));
-							String erg=line.substring(term.length()+1);
-							
-							ComputationRequestInfo request=new ComputationRequestInfo(date, term, erg, node);
-							logList.add(request);
-
-							
-						} catch (EOFException e){
-							logger.info("end of line");
-						}  
+						ComputationRequestInfo request=new ComputationRequestInfo(date, term, erg, componentName);
+						logList.add(request);
 					}
-				} catch (FileNotFoundException e) {
-					logger.error("File not found..");
+				} catch (FileNotFoundException e1) {
+					logger.error("FileNotFound");
 				} catch (IOException e) {
-					logger.error("Can not read the log file");
+					logger.error("I/0 Failure");
 				}
-
-
-
 			}
 		}
-
 		return logList;
 	}
 	private static final ThreadLocal<SimpleDateFormat> formatter = new ThreadLocal<SimpleDateFormat>(){

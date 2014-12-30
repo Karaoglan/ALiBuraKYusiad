@@ -1,5 +1,8 @@
 package model;
 
+import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
@@ -7,7 +10,11 @@ import java.util.Date;
  * used in Lab 2. Hence, you do not have to implement it for the first
  * submission.
  */
-public class ComputationRequestInfo {
+public class ComputationRequestInfo implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6498474517490692156L;
 	private Date date;
 	private String term;
 	private String ergebnis;
@@ -33,8 +40,8 @@ public class ComputationRequestInfo {
 	}
 	@Override
 	public String toString() {
-		return "ComputationRequestInfo [date=" + date + ", term=" + term
-				+ ", ergebnis=" + ergebnis + ", node=" + node + "]";
+		DateFormat dt=new SimpleDateFormat("yyyyMMdd_HHmmss.SSS");
+		return  dt.format(date) +"["+node+"]: "+ term +" = " + ergebnis ;
 	}
 	
 

@@ -3,27 +3,25 @@ package controller;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,7 +48,6 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 	public IsAliveListener alive;
 	private String bindingName;
 	private int rmiPort;
-	private String rmiHost;
 	private Registry registry;
 	protected static Map<String,String> loginStatus =Collections.synchronizedMap(new TreeMap<String,String>());
 	protected static Map<String,Long> userCredits=Collections.synchronizedMap(new TreeMap<String,Long>());
@@ -79,7 +76,6 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 		this.componentName = componentName;
 		this.userRequestStream = userRequestStream;
 		this.bindingName=config.getString("binding.name");
-		this.rmiHost=config.getString("controller.host");
 		this.rmiPort=config.getInt("controller.rmi.port");
 		try {
 			this.registry=LocateRegistry.createRegistry(rmiPort);
@@ -173,6 +169,7 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 		return message;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	@Command
 	public String exit() throws IOException {
@@ -265,23 +262,13 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 				if(map.getValue().equals("online")){
 					try {
 						Socket sock=new Socket(nodeInfos.get(map.getKey()),map.getKey());
-						ObjectOutputStream oos=new ObjectOutputStream(sock.getOutputStream());
-						oos.flush();
-						System.out.println("osssss");
-						System.out.println("burda");
-						//oos.writeUTF("!getLogs");
-						//oos.writeObject("!getLogs");
-						oos.writeObject("!getLogs");
-						oos.flush();
-						oos.close();
-
+						PrintWriter writer=new PrintWriter(sock.getOutputStream(),true);
+						writer.println("!getLogs");
 						ObjectInputStream ois=new ObjectInputStream(sock.getInputStream());
-
 						list.addAll((List<ComputationRequestInfo>) ois.readObject());
-						System.out.println("burda1");
-						//oos.close();
-						ois.close();
 						sock.close();
+						writer.close();
+						ois.close();
 					} catch (IOException e) {
 						logger.error("Can not create TCP SOCKET");
 					} catch (ClassNotFoundException e) {
@@ -291,15 +278,19 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 				}
 			}
 		}
+		
+		Collections.sort(list, new Comparator<ComputationRequestInfo>(){
+	           public int compare (ComputationRequestInfo c1, ComputationRequestInfo c2){
+	               return c1.getDate().compareTo(c2.getDate());
+	           }
+	       });
 		return list;
 	}
+	
 
 	@Command
 	@Override
 	public LinkedHashMap<Character, Long> statistics() throws RemoteException {
-		for(Character c :statistic.keySet()){
-			System.out.println(statistic.get(c));
-		}
 		LinkedHashMap<Character,Long> map= new LinkedHashMap<Character,Long>(statistic);
 		return  map;
 	}

@@ -165,7 +165,7 @@ public class CommandsHandler implements Runnable {
 		if(firstPlusOcc!=lastPlusOcc){
 			operators=operators.substring(0,lastPlusOcc)+operators.substring(lastPlusOcc+1);
 		}
-		return operators.length()>0?operators:"No available operators";
+		return operators.length()>0?operators:"No available operation";
 	}
 
 

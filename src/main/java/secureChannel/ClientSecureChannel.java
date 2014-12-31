@@ -3,6 +3,7 @@ package secureChannel;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.MissingResourceException;
 
 import util.Config;
 import util.SecurityUtils;
@@ -19,7 +20,22 @@ public class ClientSecureChannel {
 		this.config=config;
 	}
 
+	public boolean userExists(String username){
+		Config user=new Config("user");
+
+		try{
+			user.getInt(username+".credits");
+		}catch(MissingResourceException ex){
+			return false;
+		}
+		return true;
+	}
+
+
 	public String sendRSA(String username) throws IOException{
+		if(!userExists(username)){
+			return "User doesnt exist";
+		}
 		byte [] clientChannel=SecurityUtils.generateRandomNumber(32);
 		String encRsa=SecurityUtils.encryptRsa(clientChannel,config.getString("controller.key"));
 		writer.println("!authenticate "+username+ " " +encRsa);

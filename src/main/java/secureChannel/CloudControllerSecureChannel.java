@@ -21,7 +21,7 @@ public class CloudControllerSecureChannel {
 		this.config=config;
 	}
 	
-	public void getRSA(String message) throws IOException{
+	public boolean getRSA(String message) throws IOException{
 		String [] split=message.split(" ");
 		String username=split[0];
 		byte[] decoded=SecurityUtils.decodeBase64(split[1].getBytes());
@@ -39,12 +39,7 @@ public class CloudControllerSecureChannel {
 					SecurityUtils.encryptRsa(ivParameter, pubKeyPath);
 		writer.println(secondMessage);
 		//
-		String toReturn;
-		if(getAes()){
-			toReturn="Successfully logged in!";
-		}
-		toReturn="Authentication failed!";
-		writer.println(toReturn);
+		return getAes();
 	}
 	
 	public boolean getAes() throws IOException{

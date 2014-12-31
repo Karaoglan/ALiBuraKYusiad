@@ -311,11 +311,21 @@ public class CommandsHandler implements Runnable {
 
 	}
 	
+	
 	@Command
 	public String authenticate(String message) throws IOException {
 		CloudControllerSecureChannel sc=new CloudControllerSecureChannel(reader,writer, config);
-		sc.getRSA(message);
-		return null;
+		String username=message.split(" ")[0];
+		
+		if(CloudController.loginStatus.get(username).equals("online")){
+			return "User already online";
+		}
+		if(sc.getRSA(message)){
+			
+			 CloudController.loginStatus.put(loggedInUser,"online");
+			 return "Authentication succesfull";
+		}
+		return "Authentication failed";
 	}
 
 

@@ -138,7 +138,7 @@ public final class SecurityUtils {
 		 String encrypted = null;
 		try {
 			
-			cipher=Cipher.getInstance("AES/CTR/NoPadding");
+			cipher=Cipher.getInstance("AES/CTR/NoPadding","BC");
 			SecretKeySpec key=new SecretKeySpec(secretKey,"AES/CTR/NoPadding");
 			cipher.init(Cipher.ENCRYPT_MODE,key,new IvParameterSpec(ivParam));
 			byte[] last=cipher.doFinal(message);
@@ -167,7 +167,7 @@ public final class SecurityUtils {
 		 String decrypted = null;
 		try {
 			
-			cipher=Cipher.getInstance("AES/CTR/NoPadding");
+			cipher=Cipher.getInstance("AES/CTR/NoPadding","BC");
 			
 			SecretKeySpec key=new SecretKeySpec(secretKey,"AES/CTR/NoPadding");
 			cipher.init(Cipher.DECRYPT_MODE,key,new IvParameterSpec(ivParam));

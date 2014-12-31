@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import secureChannel.CloudControllerSecureChannel;
 import util.Config;
 import admin.INotificationCallback;
 import cli.Command;
@@ -29,10 +30,12 @@ public class CommandsHandler implements Runnable {
 	public static final Log logger =LogFactory.getLog(CommandsHandler.class);
 	private String loggedInUser;
 	private Shell shell;
+	private Config config;
 
 	public CommandsHandler(Socket client) throws IOException{
 		this.client=client;
 		this.loggedInUser=null;
+		config=new Config("controller");
 		reader=new BufferedReader(new InputStreamReader (client.getInputStream()));
 		writer=new PrintWriter(client.getOutputStream(),true);
 		shell = new Shell("Server", client.getInputStream(), client.getOutputStream());
@@ -306,6 +309,13 @@ public class CommandsHandler implements Runnable {
 		writer.close();
 		client.close();	
 
+	}
+	
+	@Command
+	public String authenticate(String message) throws IOException {
+		CloudControllerSecureChannel sc=new CloudControllerSecureChannel(reader,writer, config);
+		sc.getRSA(message);
+		return null;
 	}
 
 

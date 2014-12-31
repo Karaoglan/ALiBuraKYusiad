@@ -15,6 +15,7 @@ import java.util.concurrent.RejectedExecutionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import secureChannel.ClientSecureChannel;
 import util.Config;
 import cli.Command;
 import cli.Shell;
@@ -29,6 +30,7 @@ public class Client implements IClientCli, Runnable {
 	private Shell shell;
 	public static final Log logger =LogFactory.getLog(Client.class);
 	private ExecutorService executor =Executors.newCachedThreadPool();
+	private Config config;
 
 	/**
 	 * @param componentName
@@ -43,6 +45,7 @@ public class Client implements IClientCli, Runnable {
 	public Client(String componentName, Config config,
 			InputStream userRequestStream, PrintStream userResponseStream) {
 		this.componentName = componentName;
+		this.config=config;
 		this.userRequestStream = userRequestStream;
 
 		/*
@@ -194,11 +197,12 @@ public class Client implements IClientCli, Runnable {
 
 	// --- Commands needed for Lab 2. Please note that you do not have to
 	// implement them for the first submission. ---
-
+	@Command
 	@Override
 	public String authenticate(String username) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		ClientSecureChannel ch=new ClientSecureChannel(reader, writer,config);
+		
+		return ch.sendRSA(username);
 	}
 
 }

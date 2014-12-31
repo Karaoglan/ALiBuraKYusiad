@@ -1,10 +1,10 @@
-/model/
-/node/
-/util/
 /admin/
 /cli/
 /client/
 /controller/
 /exceptions/
+/model/
+/node/
+/secureChannel/
 /test/
-/secure/
+/util/

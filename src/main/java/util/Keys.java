@@ -47,7 +47,6 @@ public final class Keys {
 		 */
 		// PEMReader in = new PEMReader(new FileReader(file), new
 		// PasswordReader(file.getName()));
-
 		PEMReader in = new PEMReader(new FileReader(file),
 				new StaticPasswordReader(file.getName()));
 

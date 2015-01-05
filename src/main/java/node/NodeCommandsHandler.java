@@ -175,6 +175,7 @@ public class NodeCommandsHandler implements Runnable {
 				}
 				try {
 					FileReader reader=new FileReader(file);
+					@SuppressWarnings("resource")
 					BufferedReader fileReader=new BufferedReader(reader);
 					String line="";
 					while((line=fileReader.readLine())!=null){

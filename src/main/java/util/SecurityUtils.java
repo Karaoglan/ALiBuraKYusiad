@@ -8,11 +8,13 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
@@ -52,7 +54,7 @@ public final class SecurityUtils {
 	}
 	public static synchronized byte[] decodeBase64(byte[] message){
 		return Base64.decode(message);
-	}
+	}	
 	public static synchronized byte[] generateRandomNumber(int length){
 		SecureRandom secureRandom = new SecureRandom();
 		final byte[] number = new byte[length];
@@ -65,7 +67,6 @@ public final class SecurityUtils {
 			generator = KeyGenerator.getInstance("AES");
 		} catch (NoSuchAlgorithmException e) {
 		}
-		// KEYSIZE is in bits
 		generator.init(keySize);
 		SecretKey key = generator.generateKey();
 		return key;
@@ -96,8 +97,6 @@ public final class SecurityUtils {
 			logger.error("IllegalBlockSizeException");
 		} catch (BadPaddingException e) {
 			logger.error("BadPaddingException");
-		}catch(Exception ex){
-			ex.printStackTrace();
 		}
 		return encrypted;
 	}
@@ -126,8 +125,6 @@ public final class SecurityUtils {
 			logger.error("IllegalBlockSizeException");
 		} catch (BadPaddingException e) {
 			logger.error("BadPaddingException");
-		}catch(Exception ex){
-			ex.printStackTrace();
 		}
 		return decrypted;
 	}
@@ -136,6 +133,9 @@ public final class SecurityUtils {
 		 registerBouncyCastle();
 		 Cipher cipher = null;
 		 String encrypted = null;
+		 secretKey=SecurityUtils.decodeBase64(secretKey);
+		 ivParam=SecurityUtils.decodeBase64(ivParam);
+		 
 		try {
 			
 			cipher=Cipher.getInstance("AES/CTR/NoPadding","BC");
@@ -143,6 +143,7 @@ public final class SecurityUtils {
 			cipher.init(Cipher.ENCRYPT_MODE,key,new IvParameterSpec(ivParam));
 			byte[] last=cipher.doFinal(message);
 			encrypted= new String(encodeBase64(last));
+			
 	      
 		} catch (NoSuchAlgorithmException e) {
 			logger.error("NoSuchAlgorithmException");
@@ -157,7 +158,7 @@ public final class SecurityUtils {
 		} catch (InvalidAlgorithmParameterException e) {
 			logger.error("InvalidAlgorithmParameterException",e);
 		}catch(Exception ex){
-			ex.printStackTrace();
+			logger.info("exception");
 		}
 		return encrypted;
 	}
@@ -187,8 +188,42 @@ public final class SecurityUtils {
 		} catch (InvalidAlgorithmParameterException e) {
 			logger.error("InvalidAlgorithmParameterException");
 		} catch(Exception ex){
-			ex.printStackTrace();
+			logger.info("exception");
 		}
 		return decrypted;
+	}
+	
+	public static synchronized String createHashMac(byte [] message, Key key){
+		Mac hMac=null;
+		try {
+			hMac = Mac.getInstance("HmacSHA256");
+			hMac.init(key);
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		hMac.update(message);
+		byte[] hash = hMac.doFinal();
+
+		return new String(Base64.encode(hash)) + " " + new String(message);
+	}
+	public static synchronized boolean verifyHash(String message ,Key key){
+		String[] parts = message.split(" ");
+		byte[] hash = Base64.decode(parts[0].getBytes());
+		String originalMessage = message.substring(message.split(" ")[0].length()+1);;
+
+		Mac hMac =null;
+		try {
+			hMac = Mac.getInstance("HmacSHA256");
+			hMac.init(key);
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		hMac.update(originalMessage.getBytes());
+		byte[] hashNode = hMac.doFinal();
+		return Arrays.equals(hash, hashNode);
 	}
 }

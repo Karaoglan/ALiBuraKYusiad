@@ -1,10 +1,12 @@
 package controller;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -16,6 +18,8 @@ import org.apache.commons.logging.LogFactory;
 
 import secureChannel.CloudControllerSecureChannel;
 import util.Config;
+import util.Keys;
+import util.SecurityUtils;
 import admin.INotificationCallback;
 import cli.Command;
 import cli.Shell;
@@ -31,6 +35,7 @@ public class CommandsHandler implements Runnable {
 	private String loggedInUser;
 	private Shell shell;
 	private Config config;
+	private CloudControllerSecureChannel ccSecure;
 
 	public CommandsHandler(Socket client) throws IOException{
 		this.client=client;
@@ -39,7 +44,7 @@ public class CommandsHandler implements Runnable {
 		reader=new BufferedReader(new InputStreamReader (client.getInputStream()));
 		writer=new PrintWriter(client.getOutputStream(),true);
 		shell = new Shell("Server", client.getInputStream(), client.getOutputStream());
-
+		ccSecure=new CloudControllerSecureChannel(reader, writer, config);
 		/*
 		 * Next, register all commands the Shell should support. In this example
 		 * this class implements all desired commands.
@@ -52,29 +57,19 @@ public class CommandsHandler implements Runnable {
 
 		String command="";
 		try {
-			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=reader.readLine())!=null){
+			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=ccSecure.getMessage())!=null){
 				try {
-					writer.println(shell.invoke(command));
+					ccSecure.sendMessage((String) shell.invoke(command));
 				} 
 				catch (Throwable e) {
 					logger.error("Wrong input");
 				}	
 			}
 		} catch (IOException e1) {
-			try {
-				exit();
-			} catch (IOException e) {
-				logger.error("Exit cant not be resolved");
-
-			}
-		}
-
-		try {
 			exit();
-		} catch (IOException e) {
-			logger.error("Exit cant not be resolved");
-
 		}
+
+		exit();
 
 	}
 
@@ -95,7 +90,6 @@ public class CommandsHandler implements Runnable {
 		return false;
 	}
 
-	@Command
 	public synchronized String login(String username, String password) {
 		logger.info("Method :login parameters :"+username +" "+password +" called");
 
@@ -103,7 +97,6 @@ public class CommandsHandler implements Runnable {
 		if(loggedInUser!=null || ((CloudController.loginStatus.get(username)!=null)&& (CloudController.loginStatus.get(username).equals("online")))){		 
 			return "You are already logged in!";
 		}
-
 
 		if (checkUser(username, password)) {			
 			this.loggedInUser = username;
@@ -116,11 +109,7 @@ public class CommandsHandler implements Runnable {
 
 	@Command
 	public  synchronized String logout() {
-
 		logger.info("Method : logout called");
-		if(loggedInUser==null)
-			return "You have to login first!";
-
 
 		CloudController.loginStatus.put(loggedInUser,"offline");
 		loggedInUser = null;
@@ -132,17 +121,12 @@ public class CommandsHandler implements Runnable {
 	public synchronized String credits() throws IOException {
 		logger.info("Method : credits called");
 
-		if(loggedInUser==null)
-			return "You have to login first!";
-
 		return "You have "+CloudController.userCredits.get(loggedInUser)+" credits left.";
 	}
 
 	@Command
 	public synchronized String buy(long credits) throws IOException {
-		if(loggedInUser==null)
-			return "You have to login first!";
-
+		logger.info("buy "+credits+" called");
 		Long erg =CloudController.userCredits.get(loggedInUser)+credits;
 		CloudController.userCredits.put(loggedInUser,erg);
 		return "You now have "+CloudController.userCredits.get(loggedInUser)+" credits.";
@@ -151,9 +135,7 @@ public class CommandsHandler implements Runnable {
 
 	@Command
 	public synchronized String list() throws IOException {
-		logger.info("Method : list called");
-		if(loggedInUser==null)
-			return "You have to login first!";
+		logger.info("list called");
 
 		String operators="";
 		synchronized(CloudController.supOperators){
@@ -174,9 +156,7 @@ public class CommandsHandler implements Runnable {
 
 	@Command
 	public synchronized String compute(String term) throws IOException {
-		logger.info("Method : credits +"+ term +" called");
-		if(loggedInUser==null)
-			return "You have to login first!";
+		logger.info("credits +"+ term +" called");
 		int numberOfRequest=0;
 		//check if term have available operations
 		List<String> list=Arrays.asList(term.split(" "));
@@ -228,10 +208,19 @@ public class CommandsHandler implements Runnable {
 				Nodeclient=new Socket("localhost",port);
 				this.Nodereader=new BufferedReader(new InputStreamReader (Nodeclient.getInputStream()));
 				this.Nodewriter=new PrintWriter(Nodeclient.getOutputStream(),true);
-				Nodewriter.println("!compute "+toCompute);
+				String compute="!compute "+toCompute;
+				//
+				File file=new File(config.getString("hmac.key"));
+				Key secretKey=Keys.readSecretKey(file);
+				String toSend=SecurityUtils.createHashMac(compute.getBytes(), secretKey);
+				//
+				Nodewriter.println(toSend);
 
 				String erg=Nodereader.readLine();
-				if (erg.equals("Infinity")){
+				if(erg.contains("!tempared")){
+					System.out.println("HASH FAILURE "+erg);
+					return "HASH FAILURE ";
+				}else if (erg.equals("Infinity")){
 					return " Error :Division by 0";
 				}
 				ergebnis=(int)Math.round(Double.parseDouble(erg));
@@ -298,34 +287,42 @@ public class CommandsHandler implements Runnable {
 	}
 
 	@Command
-	public synchronized  void exit() throws IOException {
+	public synchronized  void exit(){
 		logger.info("exit called");
 		// First try to logout in case a user is still logged in
 		if(loggedInUser!=null){
 			logout();
 		}
+		
 		shell.close();
-		reader.close();
-		writer.close();
-		client.close();	
+		try {
+			client.close();
+			reader.close();
+			writer.close();
+		} catch (IOException e) {
+			logger.error("Something wrong");
+		}	
+		
+		
 
 	}
-	
-	
+
+
 	@Command
 	public String authenticate(String message) throws IOException {
-		CloudControllerSecureChannel sc=new CloudControllerSecureChannel(reader,writer, config);
 		String username=message.split(" ")[0];
-		
-		if(CloudController.loginStatus.get(username).equals("online")){
-			return "User already online";
+
+		if(loggedInUser!=null || CloudController.loginStatus.get(username).equals("online")){
+			ccSecure.setUsername(username);
+			return "USER_ALREADY_ONLINE";
 		}
-		if(sc.getRSA(message)){
-			
-			 CloudController.loginStatus.put(loggedInUser,"online");
-			 return "Authentication succesfull";
+		if(ccSecure.getAuthenticate(message)){
+			this.loggedInUser=username;
+			CloudController.loginStatus.put(loggedInUser,"online");
+			return "AUTHENTICATION_SUCCESSFULL";
+
 		}
-		return "Authentication failed";
+		return "AUTHENTICATION_FAILED";
 	}
 
 

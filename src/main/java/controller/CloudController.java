@@ -38,6 +38,11 @@ import cli.Shell;
 
 public class CloudController extends UnicastRemoteObject implements ICloudControllerCli, IAdminConsole,Runnable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	private String componentName;
 
 	private InputStream userRequestStream;
@@ -265,7 +270,9 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 						PrintWriter writer=new PrintWriter(sock.getOutputStream(),true);
 						writer.println("!getLogs");
 						ObjectInputStream ois=new ObjectInputStream(sock.getInputStream());
-						list.addAll((List<ComputationRequestInfo>) ois.readObject());
+						@SuppressWarnings("unchecked")
+						List<ComputationRequestInfo> listComp=(List<ComputationRequestInfo>) ois.readObject();
+						list.addAll(listComp);
 						sock.close();
 						writer.close();
 						ois.close();

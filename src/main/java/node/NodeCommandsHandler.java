@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.Key;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,6 +28,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import util.Config;
+import util.Keys;
+import util.SecurityUtils;
 import cli.Command;
 import cli.Shell;
 
@@ -66,12 +69,25 @@ public class NodeCommandsHandler implements Runnable {
 		try {
 			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=reader.readLine())!=null){
 				try {
+					String original;
 					if(command.equals("!getLogs")){
 						ObjectOutputStream oos=new ObjectOutputStream(client.getOutputStream());
 						oos.flush();
+						@SuppressWarnings("unchecked")
 						List<ComputationRequestInfo> list=(List<ComputationRequestInfo>) shell.invoke(command);
 						oos.writeObject(list);
 						oos.close();
+					}else if((original=command.substring(command.split(" ")[0].length()+1)).startsWith("!compute")){ 
+						File file=new File(config.getString("hmac.key"));
+						Key secretKey=Keys.readSecretKey(file);
+						 
+						if(SecurityUtils.verifyHash(command,secretKey)){
+							writer.println(shell.invoke(original));
+						}else {
+							String hash=SecurityUtils.createHashMac(("!tempared "+original).getBytes(),secretKey);
+							writer.println(hash);
+							System.out.println("HASH FAILURE");
+						}
 					}else writer.println(shell.invoke(command));
 				}
 				catch (Throwable e) {

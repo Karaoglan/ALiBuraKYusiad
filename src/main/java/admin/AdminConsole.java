@@ -31,6 +31,10 @@ import controller.IAdminConsole;
  */
 public class AdminConsole extends UnicastRemoteObject implements IAdminConsole, Runnable,INotificationCallback {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private String componentName;
 	private InputStream userRequestStream;
 	private PrintStream userResponseStream;

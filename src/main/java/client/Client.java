@@ -30,7 +30,8 @@ public class Client implements IClientCli, Runnable {
 	private Shell shell;
 	public static final Log logger =LogFactory.getLog(Client.class);
 	private ExecutorService executor =Executors.newCachedThreadPool();
-	private Config config;
+	private ClientSecureChannel clSecure;
+	private boolean loggedIn;
 
 	/**
 	 * @param componentName
@@ -45,7 +46,6 @@ public class Client implements IClientCli, Runnable {
 	public Client(String componentName, Config config,
 			InputStream userRequestStream, PrintStream userResponseStream) {
 		this.componentName = componentName;
-		this.config=config;
 		this.userRequestStream = userRequestStream;
 
 		/*
@@ -59,11 +59,13 @@ public class Client implements IClientCli, Runnable {
 		 * this class implements all desired commands.
 		 */
 		shell.register(this);
+		loggedIn=false;
 
 		try {
 			clientSocket =new Socket(config.getString("controller.host"),config.getInt("controller.tcp.port"));
 			this.reader=new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			this.writer=new PrintWriter(clientSocket.getOutputStream(),true);
+			clSecure=new ClientSecureChannel(reader, writer, config);
 		} catch (UnknownHostException e) {
 			logger.error("Can not connect to Host !");
 		} catch (IOException e) {
@@ -86,7 +88,6 @@ public class Client implements IClientCli, Runnable {
 
 
 	@Override
-	@Command
 	public String login(String username, String password) throws IOException {
 		logger.info("login "+username +" "+password+" called");
 		writer.println("!login "+username+" "+password);
@@ -97,52 +98,61 @@ public class Client implements IClientCli, Runnable {
 	@Command
 	public String logout() throws IOException {
 		logger.info("logout called");
-		String respond="";
-		writer.println("!logout");
-
-		//while(reader.ready()){
-		respond=reader.readLine();
-		//}
-
-		return respond;
+		if(!loggedIn){
+			return "You have to login first";
+		}
+		clSecure.sendMessage("!logout");
+		loggedIn=false;
+		return clSecure.getMessage();
 	}
 
 	@Override
 	@Command
 	public String credits() throws IOException {
 		logger.info("credits called");
-		writer.println("!credits");
+		if(!loggedIn){
+			return "You have to login first";
+		}
+		clSecure.sendMessage("!credits");
 
-		return reader.readLine();
+		return clSecure.getMessage();
 	}
 
 	@Override
 	@Command
 	public String buy(long credits) throws IOException {
 		logger.info("buy "+credits+" called");
-		writer.println("!buy "+credits);
+		if(!loggedIn){
+			return "You have to login first";
+		}
+		clSecure.sendMessage("!buy "+credits);
 
-		return reader.readLine();
+		return clSecure.getMessage();
 	}
 
 	@Override
 	@Command
 	public String list() throws IOException {
 		logger.info("list called");
-		writer.println("!list");
-		return reader.readLine();
+		if(!loggedIn){
+			return "You have to login first";
+		}
+		clSecure.sendMessage("!list");
+
+		return clSecure.getMessage();
 	}
 
 	@Override
 	@Command
 	public String compute(String term) throws IOException {
 		logger.info("compute "+ term + " called");
+		if(!loggedIn){
+			return "You have to login first";
+		}
 		String usage ="Usage : !compute <Number> [+,-,/,*] <Number>";
 		if(checkTermToCompute(term)){
-			String respond="";
-			writer.println("!compute "+term);
-			respond=reader.readLine();
-			return respond;
+			clSecure.sendMessage("!compute "+term);
+			return clSecure.getMessage();
 		}else return usage;
 	}
 
@@ -200,9 +210,16 @@ public class Client implements IClientCli, Runnable {
 	@Command
 	@Override
 	public String authenticate(String username) throws IOException {
-		ClientSecureChannel ch=new ClientSecureChannel(reader, writer,config);
 		
-		return ch.sendRSA(username);
+		if(loggedIn){
+			return LoginResponseEnum.USER_ALREADY_ONLINE.toString();
+		}
+		
+		String result=clSecure.sendAuthentication(username);
+		if(LoginResponseEnum.AUTHENTICATION_SUCCESSFULL.equals(LoginResponseEnum.valueOf(result))){
+			loggedIn=true;
+		}
+		return result;
 	}
 
 }

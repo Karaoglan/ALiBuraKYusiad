@@ -244,7 +244,8 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 		if(!subscription.isEmpty() && subscription.containsKey(callback)){
 			TreeMap<String, Integer> temp = subscription.get(callback);
 			if(temp.containsKey(username)){
-				temp.replace(username, temp.get(username),Math.max(temp.get(username),credits));
+			//	temp.replace(username, temp.get(username),Math.max(temp.get(username),credits));
+				temp.put(username, Math.max(temp.get(username),credits));
 			}else {
 				temp.put(username, credits);
 				subscription.put(callback,temp);
@@ -260,8 +261,12 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 	@Command
 	@Override
 	public List<ComputationRequestInfo> getLogs() throws RemoteException {
-
 		List<ComputationRequestInfo> list=new ArrayList<ComputationRequestInfo>();
+		if(!aliveStatus.containsValue("online")){
+			ComputationRequestInfo comp=new ComputationRequestInfo("No online Nodes");
+			list.add(comp);
+			return list;
+		}
 		synchronized(aliveStatus){
 			for(Entry<Integer, String> map :aliveStatus.entrySet()){
 				if(map.getValue().equals("online")){
@@ -285,7 +290,6 @@ public class CloudController extends UnicastRemoteObject implements ICloudContro
 				}
 			}
 		}
-		
 		Collections.sort(list, new Comparator<ComputationRequestInfo>(){
 	           public int compare (ComputationRequestInfo c1, ComputationRequestInfo c2){
 	               return c1.getDate().compareTo(c2.getDate());

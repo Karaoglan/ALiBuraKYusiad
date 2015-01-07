@@ -20,6 +20,7 @@ import java.util.TimerTask;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import util.Config;
 import exceptions.ConnectionRollbackedException;
 
 public class IsAliveSender extends TimerTask {
@@ -30,14 +31,16 @@ public class IsAliveSender extends TimerTask {
 	private int udpPort;
 	private byte[] toSend;
 	private byte[] firstMessage;
+	private Config config;
 	Map<Socket,HashMap<PrintWriter,BufferedReader>> sockets;
 	public static final Log logger =LogFactory.getLog(Node.class);	
 
 
-	public IsAliveSender(int udpPort,int tcpPort, String host,String operators) throws ConnectionRollbackedException {
+	public IsAliveSender(int udpPort,int tcpPort, String host,String operators,Config config) throws ConnectionRollbackedException {
 		this.udpPort = udpPort;
 		firstMessage="!hello".getBytes();
 		this.toSend = ("!alive "+tcpPort+" "+operators).getBytes();
+		this.config=config;
 		
 		try {
 			this.inetAddress = InetAddress.getByName(host);
@@ -72,6 +75,9 @@ public class IsAliveSender extends TimerTask {
 		Integer rmax =Integer.parseInt(recvStr[recvStr.length-1].trim());
 		Integer resLevel=rmax/(recvStr.length-1);
 		if(recvStr.length>2){
+			if(resLevel<config.getInt("node.rmin")){
+				throw new ConnectionRollbackedException("Nodes rmin higher than Resource Level.Please increase the resources");
+			}
 			for(int i =1 ;i<recvStr.length-1;i++){
 				String host =recvStr[i].substring(0, recvStr[i].indexOf(":")).trim();
 				int port=Integer.parseInt(recvStr[i].substring(host.length()+2).trim());
@@ -97,19 +103,23 @@ public class IsAliveSender extends TimerTask {
 
 			if(transactions.contains("!nok")){
 				for(Socket sock:sockets.keySet()){
-					sockets.get(sock).keySet().iterator().next().println("!rollback");
+					sockets.get(sock).keySet().iterator().next().println("!rollback "+resLevel);
 				}
 				closeResNodeConnections();
-				throw new ConnectionRollbackedException();
+				throw new ConnectionRollbackedException("Connection rollbacked..Please increase the resources");
 
 			}else{
 				for(Socket sock:sockets.keySet()){
-					sockets.get(sock).keySet().iterator().next().println("!commit");
-					Node.nodeResource.add(1,resLevel+"");
-					Node.nodeResource.remove(0);
+					sockets.get(sock).keySet().iterator().next().println("!commit "+resLevel);
+					
 				}
+				Node.nodeResource.add(1,resLevel+"");
+				Node.nodeResource.remove(0);
 				closeResNodeConnections();
 			}
+		}else {
+			Node.nodeResource.add(1,resLevel+"");
+			Node.nodeResource.remove(0);
 		}
 
 

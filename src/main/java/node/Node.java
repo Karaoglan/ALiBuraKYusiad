@@ -75,9 +75,9 @@ public class Node implements INodeCli, Runnable {
 		int nodeAlive=config.getInt("node.alive");
 		String operator=config.getString("node.operators");
 		try {
-			isAliveSender=new IsAliveSender(config.getInt("controller.udp.port"),tcpPort,host,operator);
+			isAliveSender=new IsAliveSender(config.getInt("controller.udp.port"),tcpPort,host,operator,config);
 		} catch (ConnectionRollbackedException e) {
-			logger.info("Connection rollbacked..Please increase the resources");
+			System.out.println(e.getMessage());
 			return;
 		}
 

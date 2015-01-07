@@ -19,12 +19,17 @@ public class ComputationRequestInfo implements Serializable {
 	private String term;
 	private String ergebnis;
 	private String node;
+	private String errorMessage="";
 	public ComputationRequestInfo(Date date, String term, String ergebnis,
 			String node) {
 		this.date = date;
 		this.term = term;
 		this.ergebnis = ergebnis;
 		this.node = node;
+	}
+	
+	public ComputationRequestInfo(String message){
+		this.errorMessage=message;
 	}
 	public Date getDate() {
 		return date;
@@ -40,6 +45,9 @@ public class ComputationRequestInfo implements Serializable {
 	}
 	@Override
 	public String toString() {
+		if(!errorMessage.isEmpty()){
+			return errorMessage;
+		}
 		DateFormat dt=new SimpleDateFormat("yyyyMMdd_HHmmss.SSS");
 		return  dt.format(date) +"["+node+"]: "+ term +" = " + ergebnis ;
 	}

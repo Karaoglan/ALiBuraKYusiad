@@ -69,6 +69,7 @@ public class NodeCommandsHandler implements Runnable {
 		try {
 			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=reader.readLine())!=null){
 				try {
+					System.out.println("command "+ command);
 					String original;
 					if(command.equals("!getLogs")){
 						ObjectOutputStream oos=new ObjectOutputStream(client.getOutputStream());
@@ -77,10 +78,10 @@ public class NodeCommandsHandler implements Runnable {
 						List<ComputationRequestInfo> list=(List<ComputationRequestInfo>) shell.invoke(command);
 						oos.writeObject(list);
 						oos.close();
-					}else if((original=command.substring(command.split(" ")[0].length()+1)).startsWith("!compute")){ 
+					}else if((original=command.substring(command.trim().split(" ")[0].length()+1)).startsWith("!compute")){ 
 						File file=new File(config.getString("hmac.key"));
 						Key secretKey=Keys.readSecretKey(file);
-						 
+
 						if(SecurityUtils.verifyHash(command,secretKey)){
 							writer.println(shell.invoke(original));
 						}else {
@@ -91,6 +92,7 @@ public class NodeCommandsHandler implements Runnable {
 					}else writer.println(shell.invoke(command));
 				}
 				catch (Throwable e) {
+					e.printStackTrace();
 					exit();
 				}
 			}	
@@ -135,12 +137,14 @@ public class NodeCommandsHandler implements Runnable {
 	}
 
 	@Command
-	public void commit(){
-		Node.nodeResource.remove(0);
+	public void commit(int res){
+		if(Node.nodeResource.get(1).equals(res+"")){
+			Node.nodeResource.remove(0);
+		}else System.out.println("Failure");
 	}
 
 	@Command
-	public void rollback(){
+	public void rollback(int res){
 		if(Node.nodeResource.size()>1){
 			Node.nodeResource.remove(1);
 		}

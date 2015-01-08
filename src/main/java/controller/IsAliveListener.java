@@ -58,12 +58,7 @@ public class IsAliveListener extends Thread {
 				info+=conf.getInt("controller.rmax");
 				sendMessage=info.getBytes();
 				DatagramPacket send=null;
-				try {
-					send = new DatagramPacket(sendMessage,sendMessage.length,packet.getSocketAddress());
-				} catch (SocketException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				send = new DatagramPacket(sendMessage,sendMessage.length,packet.getSocketAddress());
 				try {
 					socket.send(send);
 				} catch (IOException e) {

@@ -75,7 +75,7 @@ public class IsAliveListener extends Thread {
 				try {
 					send = new DatagramPacket(sendMessage,sendMessage.length,packet.getSocketAddress());
 					socket.send(send);
-				} catch (SocketException | IOException e1) {
+				} catch (Exception e1) {
 					logger.info("Something wrong during sending packet ");
 				}
 				

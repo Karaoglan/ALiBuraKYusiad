@@ -21,7 +21,10 @@ public class IsAliveListener extends Thread {
 	private DatagramPacket packet;
 	private byte[] receivePacket;
 	public static final Log logger =LogFactory.getLog(Node.class);
+	private Timer t ;
+	private Config conf;
 	public IsAliveListener(int udpPort) {
+		conf=new Config("controller");
 		this.receivePacket=new byte[256];
 		try {
 			this.socket=new DatagramSocket(udpPort);
@@ -29,6 +32,17 @@ public class IsAliveListener extends Thread {
 		} catch (SocketException e) {
 			logger.error("CAN not create datagramsocket",e);
 		}
+		int checkPeriod = conf.getInt("node.checkPeriod"); 
+		final int offlineNode =conf.getInt("node.timeout");
+		t=new Timer();
+
+		t.scheduleAtFixedRate(new TimerTask(){
+
+			@Override
+			public void run() {
+				controlCheckout(offlineNode);
+
+			}}, checkPeriod, checkPeriod);
 	}
 	@Override
 	public void run(){
@@ -43,7 +57,7 @@ public class IsAliveListener extends Thread {
 			}
 
 			String receivedString = new String(packet.getData(), 0, packet.getLength()).trim();
-			Config conf=new Config("controller");
+			
 			if(receivedString.equals("!hello")){
 
 				byte sendMessage[];
@@ -58,12 +72,13 @@ public class IsAliveListener extends Thread {
 				info+=conf.getInt("controller.rmax");
 				sendMessage=info.getBytes();
 				DatagramPacket send=null;
-				send = new DatagramPacket(sendMessage,sendMessage.length,packet.getSocketAddress());
 				try {
+					send = new DatagramPacket(sendMessage,sendMessage.length,packet.getSocketAddress());
 					socket.send(send);
-				} catch (IOException e) {
-					logger.error("I/O failure...!",e);
+				} catch (SocketException | IOException e1) {
+					logger.info("Something wrong during sending packet ");
 				}
+				
 
 			}else if (receivedString.length()==0){
 				close();
@@ -79,25 +94,14 @@ public class IsAliveListener extends Thread {
 				CloudController.supOperators.put(port,splitStr[2]);
 				CloudController.nodeTime.put(port,System.currentTimeMillis());
 
-				int checkPeriod = conf.getInt("node.checkPeriod"); 
-				final int offlineNode =conf.getInt("node.timeout");
-				Timer t=new Timer();
-
-				t.scheduleAtFixedRate(new TimerTask(){
-
-					@Override
-					public void run() {
-						controlCheckout(offlineNode);
-
-					}}, checkPeriod, checkPeriod);
-
-
 			}
 		}
+		close();
 	}
 
 	public void close(){
 		this.socket.close();
+		t.cancel();
 
 	}
 

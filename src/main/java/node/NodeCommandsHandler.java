@@ -69,7 +69,6 @@ public class NodeCommandsHandler implements Runnable {
 		try {
 			while(!Thread.currentThread().isInterrupted() && !client.isClosed() && (command=reader.readLine())!=null){
 				try {
-					System.out.println("command "+ command);
 					String original;
 					if(command.equals("!getLogs")){
 						ObjectOutputStream oos=new ObjectOutputStream(client.getOutputStream());
